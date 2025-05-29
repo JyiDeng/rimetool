@@ -63,7 +63,12 @@ class EpubProcessor:
         return tmp
     
     def process_html(self, html_content):
-        """处理HTML内容，提取特定标签"""
+        """处理HTML内容，提取特定标签
+        
+        注意：此函数已弃用，推荐直接使用 clean_html(html_content) 来处理HTML内容，
+        这样可以避免不必要的中间步骤和重复解析。
+        保留此函数仅为向后兼容性。
+        """
         soup = BeautifulSoup(html_content, 'html.parser')
         
         # 提取h3标签,标题（金匮要略格式）
@@ -103,31 +108,29 @@ class EpubProcessor:
             self.processed_content.append(str(tag))
 
     
-    def clean_html(self):
-        """清理HTML标签，只保留文本内容"""
-        final_soup = BeautifulSoup('\n'.join(self.processed_content), 'html.parser')
-        for div_tag in final_soup.find_all('div'):
-            div_tag.unwrap()
-        for a_tag in final_soup.find_all('a'):
-            a_tag.unwrap()
-        for b_tag in final_soup.find_all('b'):
-            b_tag.unwrap()
-        for br_tag in final_soup.find_all('br'):
-            br_tag.unwrap()
-        for p_tag in final_soup.find_all('p'):
-            p_tag.unwrap()
-        for p_tag in final_soup.find_all('sup'): # 注释
-            p_tag.unwrap()
-        for p_tag in final_soup.find_all('span'): # 
-            p_tag.unwrap()
-        soup = str(final_soup)
-        soup=soup.replace('　','')
-        soup=soup.replace('1\n2','')
-        soup=soup.replace('\n\n\n','\n')
-        soup=soup.replace('\n\n ','\n')
-        soup=soup.replace('        ','')
+    def clean_html(self, html_content=None):
+        """清理HTML标签，只保留文本内容
+        Args:
+            html_content: 可选的HTML内容，如果提供则直接处理，否则使用processed_content
+        """
+        if html_content is not None:
+            # 直接处理传入的HTML内容，去掉所有HTML标签
+            soup = BeautifulSoup(html_content, 'html.parser')
+            # 使用get_text()方法直接提取所有文本内容，自动去掉所有HTML标签
+            final_content = soup.get_text(separator='\n', strip=True)
+        else:
+            # 使用原有的processed_content处理方式（向后兼容）
+            final_soup = BeautifulSoup('\n'.join(self.processed_content), 'html.parser')
+            final_content = final_soup.get_text(separator='\n', strip=True)
+        
+        # 统一的文本清理
+        final_content = final_content.replace('　','')
+        final_content = final_content.replace('1\n2','')
+        final_content = final_content.replace('\n\n\n','\n')
+        final_content = final_content.replace('\n\n ','\n')
+        final_content = final_content.replace('        ','')
 
-        return soup
+        return final_content
     
     def save_output(self, content):
         """保存处理结果到文件"""
@@ -269,18 +272,17 @@ class EpubProcessor:
         # 第一步：读取EPUB文件并处理格式
         print("读取EPUB文件...")
         try:
-            sections = self.read_epub()
-            print(f"EPUB文件读取成功，内容长度: {len(sections)}")
+            html_content = self.read_epub()
+            print(f"EPUB文件读取成功，内容长度: {len(html_content)}")
         except Exception as e:
             print(f"读取EPUB文件失败: {e}")
             return None
-        # print("步骤2: 提取章节内容...")
-        # sections = self.extract_sections()
-        print("处理HTML内容...")
-        self.process_html(sections)
-        # print("步骤4: 清理HTML标签...")
-        final_content = self.clean_html()
-        # print("步骤5: 保存结果...")
+        
+        print("处理HTML内容并清理标签...")
+        # 直接将read_epub的结果传递给clean_html，跳过process_html步骤
+        final_content = self.clean_html(html_content)
+        
+        print("保存结果...")
         self.content = final_content
         output_file = self.save_output(final_content)
         
