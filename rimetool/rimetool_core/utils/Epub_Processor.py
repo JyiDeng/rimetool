@@ -53,22 +53,45 @@ class EpubProcessor:
                 for section in sections:
                     tmp+=section
                     tmp+='\n'
+        if len(tmp) == 0:
+            print("没有找到任何CHP sections，返回所有文档内容，")
+            # 如果没有找到CHP sections，返回所有文档内容
+            for item in book.get_items():
+                if item.get_type() == ebooklib.ITEM_DOCUMENT:
+                    content = item.get_body_content().decode('utf-8')
+                    tmp += content
+                    tmp += '\n'
+            print(f"总长度: {len(tmp)}")
+        
         return tmp
     
     def process_html(self, html_content):
         """处理HTML内容，提取特定标签"""
         soup = BeautifulSoup(html_content, 'html.parser')
         
-        # 提取h3标签,标题
+        # 提取h3标签,标题（金匮要略格式）
         h3_tags = soup.find_all('div', class_='h3', id=re.compile(r'CHP\d+'))
         for tag in h3_tags:
             self.processed_content.append(str(tag))
         
         
-        # 提取p标签
+        # 提取内容段落（金匮要略格式）
         p_tags = soup.find_all('div', class_='pCls')
         for tag in p_tags:
             self.processed_content.append(str(tag))
+
+        # 提取内容段落，所有的p标签
+        # 伤寒论设计的p标签的class_：
+        # 1. chapterTitle
+        # 2. sectionTitle
+        # 3. content
+        # 4. postil
+        # 5. center-content
+        # 6. zs
+        content_tags = soup.find_all('p')
+        for tag in content_tags:
+            self.processed_content.append(str(tag))
+
     
     def clean_html(self):
         """清理HTML标签，只保留文本内容"""
@@ -81,6 +104,10 @@ class EpubProcessor:
             b_tag.unwrap()
         for br_tag in final_soup.find_all('br'):
             br_tag.unwrap()
+        for p_tag in final_soup.find_all('p'):
+            p_tag.unwrap()
+        for p_tag in final_soup.find_all('sup'): # 注释
+            p_tag.unwrap()
         soup = str(final_soup)
         soup=soup.replace('　','')
         soup=soup.replace('1\n2','')

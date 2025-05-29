@@ -19,12 +19,17 @@ app = Flask(__name__, static_folder='templates')
 # CORS(app, origins="http://localhost:5500")  # 允许来自 http://localhost:5500 的请求
 CORS(app, origins="*") 
 
+# 确保日志文件目录存在
+log_dir = os.path.dirname(os.path.abspath(__file__))
+log_file_path = os.path.join(log_dir, "rimetool_gui.log")
+os.makedirs(log_dir, exist_ok=True)
+
 # 配置详细的日志
 logging.basicConfig(
     level=logging.DEBUG,  # 改为 DEBUG 级别以获取更多信息
     format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
     handlers=[
-        logging.FileHandler(r"rimetool/rimetool_gui/rimetool_gui.log"),
+        logging.FileHandler(log_file_path),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -147,6 +152,8 @@ def process_file():
             try:
                 # 保存ZIP文件到uploads文件夹
                 zip_path = os.path.join(UPLOAD_FOLDER, zip_file.filename)
+                # 确保ZIP文件的父目录存在
+                os.makedirs(os.path.dirname(zip_path), exist_ok=True)
                 zip_file.save(zip_path)
                 logger.info(f"ZIP文件已保存到: {zip_path}, 大小: {os.path.getsize(zip_path)} 字节")
                 
@@ -185,6 +192,7 @@ def process_file():
                 output_path = custom_output_path
             else:
                 output_path = os.path.join(OUTPUT_FOLDER, (tool or "epub") + "_output")
+                os.makedirs(output_path, exist_ok=True)
         elif 'file' in request.files: # 非epub的单个文件
             file = request.files['file']
             if not file.filename:
@@ -194,6 +202,8 @@ def process_file():
             
             # 保存文件到uploads文件夹
             input_path = os.path.join(UPLOAD_FOLDER, file.filename)
+            # 确保文件的父目录存在
+            os.makedirs(os.path.dirname(input_path), exist_ok=True)
             file.save(input_path)
             logger.info(f"文件已保存到: {input_path}, 大小: {os.path.getsize(input_path)} 字节")
             
@@ -202,6 +212,7 @@ def process_file():
                 output_path = custom_output_path
             else:
                 output_path = os.path.join(OUTPUT_FOLDER, (tool or "default") + "_output")
+                os.makedirs(output_path, exist_ok=True)
         elif 'files[]' in request.files: # epub的文件夹
             files = request.files.getlist('files[]')
             
@@ -215,6 +226,8 @@ def process_file():
             
             for file in files:
                 file_path = os.path.join(input_path, file.filename.split("/")[-1])
+                # 确保文件的父目录存在
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 file.save(file_path)
                 logger.info(f"文件已保存到: {file_path}")
             
@@ -223,6 +236,7 @@ def process_file():
                 output_path = custom_output_path
             else:
                 output_path = os.path.join(OUTPUT_FOLDER, (tool or "default") + "_output")
+                os.makedirs(output_path, exist_ok=True)
         else:
             logger.warning("请求中没有文件")
             return make_response('请选择文件', 400)
