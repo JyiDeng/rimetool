@@ -41,27 +41,24 @@ class EpubProcessor:
         """从EPUB文件中读取内容"""
         tmp=''
         book = epub.read_epub(self.input_path)
-        for item in book.get_items():
-            if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                # self.content += item.get_body_content().decode('utf-8')
-                content = item.get_body_content().decode('utf-8')
+        # for item in book.get_items():
+        #     if item.get_type() == ebooklib.ITEM_DOCUMENT:
+        #         # self.content += item.get_body_content().decode('utf-8')
+        #         content = item.get_body_content().decode('utf-8')
     
     # def extract_sections(self):
         # """提取所有章节内容"""
-                sections = re.findall(r'<.*id=\"CHP.*?>.*</.*?>',content, re.DOTALL)
+                # sections = re.findall(r'<.*id=\"CHP.*?>.*</.*?>',content, re.DOTALL)
                 
-                for section in sections:
-                    tmp+=section
-                    tmp+='\n'
-        if len(tmp) == 0:
-            print("没有找到任何CHP sections，返回所有文档内容，")
-            # 如果没有找到CHP sections，返回所有文档内容
-            for item in book.get_items():
-                if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                    content = item.get_body_content().decode('utf-8')
-                    tmp += content
-                    tmp += '\n'
-            print(f"总长度: {len(tmp)}")
+                # for section in sections:
+                #     tmp+=section
+                #     tmp+='\n'
+        for item in book.get_items():
+            if item.get_type() == ebooklib.ITEM_DOCUMENT:
+                content = item.get_body_content().decode('utf-8')
+                tmp += content
+                tmp += '\n'
+        print(f"总长度: {len(tmp)}")
         
         return tmp
     
@@ -74,6 +71,15 @@ class EpubProcessor:
         for tag in h3_tags:
             self.processed_content.append(str(tag))
         
+        # 提取h2标签,标题（中医临床必读丛书20册格式）
+        h2_tags = soup.find_all('h2', id=re.compile(r'CHP\d+'))
+        for tag in h2_tags:
+            self.processed_content.append(str(tag))
+
+        # 提取h4标签,标题（中医临床必读丛书20册格式）
+        h4_tags = soup.find_all('h4', id=re.compile(r'CHP\d+'))
+        for tag in h4_tags:
+            self.processed_content.append(str(tag))
         
         # 提取内容段落（金匮要略格式）
         p_tags = soup.find_all('div', class_='pCls')
@@ -92,6 +98,10 @@ class EpubProcessor:
         for tag in content_tags:
             self.processed_content.append(str(tag))
 
+        content_tags = soup.find_all('span')
+        for tag in content_tags:
+            self.processed_content.append(str(tag))
+
     
     def clean_html(self):
         """清理HTML标签，只保留文本内容"""
@@ -107,6 +117,8 @@ class EpubProcessor:
         for p_tag in final_soup.find_all('p'):
             p_tag.unwrap()
         for p_tag in final_soup.find_all('sup'): # 注释
+            p_tag.unwrap()
+        for p_tag in final_soup.find_all('span'): # 
             p_tag.unwrap()
         soup = str(final_soup)
         soup=soup.replace('　','')
